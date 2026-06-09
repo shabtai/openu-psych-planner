@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>מתכנן תואר — פסיכולוגיה חד-חוגי (האו״פ)</title>
+<style>
+  :root {
+    --bg: #0f1623; --panel: #18222f; --panel-2: #1f2c3c; --line: #2b3a4d;
+    --txt: #e8eef5; --muted: #93a3b6; --accent: #4f9cff; --accent-2: #6ee7b7;
+    --warn: #f6c453; --done: #34d399; --cur: #fbbf24; --plan: #4f9cff; --danger: #f87171;
+    --chip: #243446; --radius: 14px; --shadow: 0 6px 24px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI","Heebo","Assistant",system-ui,Arial,sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1b2940 0%, var(--bg) 55%) fixed;
+    color: var(--txt); line-height: 1.5; padding-bottom: 80px;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header.top { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(10px);
+    background: rgba(15,22,35,.85); border-bottom: 1px solid var(--line); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 18px; }
+  .top-inner { padding: 12px 0; }
+  .top h1 { font-size: 18px; margin: 0 0 12px; font-weight: 700; }
+  .top h1 small { color: var(--muted); font-weight: 500; font-size: 13px; display:block; }
+
+  /* four headline planner numbers */
+  .planner { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 10px; }
+  .pcard { border-radius: 12px; padding: 9px 13px; border: 1px solid var(--line); background: var(--panel); position: relative; overflow: hidden; }
+  .pcard .label { font-size: 11.5px; color: var(--muted); display:flex; align-items:center; gap:5px; }
+  .pcard .num { font-size: 27px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .pcard .num small { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .pcard.done { border-color: rgba(52,211,153,.45); background: linear-gradient(180deg, rgba(52,211,153,.10), transparent); }
+  .pcard.done .num { color: var(--done); }
+  .pcard.cur { border-color: rgba(251,191,36,.45); background: linear-gradient(180deg, rgba(251,191,36,.10), transparent); }
+  .pcard.cur .num { color: var(--cur); }
+  .pcard.plan { border-color: rgba(79,156,255,.45); background: linear-gradient(180deg, rgba(79,156,255,.10), transparent); }
+  .pcard.plan .num { color: var(--accent); }
+  .pcard.left { border-color: var(--line); }
+  .pcard.left .num { color: var(--muted); }
+
+  .substats { display:flex; gap: 16px; flex-wrap: wrap; align-items:center; color: var(--muted); font-size: 12.5px; }
+  .substats b { color: var(--txt); font-variant-numeric: tabular-nums; }
+  .megabar { height: 12px; background: var(--chip); border-radius: 99px; overflow: hidden; display:flex; margin: 8px 0 4px; }
+  .megabar > i { height: 100%; display:block; }
+  .megabar .mb-done { background: linear-gradient(90deg,#34d399,#6ee7b7); }
+  .megabar .mb-cur  { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+  .megabar .mb-plan { background: linear-gradient(90deg,#3b82f6,#7dd3fc); }
+  .legend { display:flex; gap:14px; font-size:12px; color:var(--muted); margin-top:4px; flex-wrap:wrap; }
+  .legend span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:3px; margin-inline-end:5px; vertical-align:middle; }
+  .legend .l-done::before { background:#34d399; }
+  .legend .l-cur::before  { background:#fbbf24; }
+  .legend .l-plan::before { background:#4f9cff; }
+  .legend .l-left::before { background:#243446; }
+
+  .toolbar { display:flex; gap:8px; flex-wrap: wrap; padding: 10px 0 0; align-items:center; }
+  button.btn, label.btn { background: var(--panel-2); color: var(--txt); border: 1px solid var(--line);
+    border-radius: 10px; padding: 7px 12px; font-size: 13px; cursor: pointer;
+    display:inline-flex; align-items:center; gap:6px; font-family: inherit; }
+  button.btn:hover, label.btn:hover { border-color: var(--accent); }
+  button.btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+  .toggle-old { display:flex; align-items:center; gap:8px; font-size:12.5px; color: var(--muted); cursor:pointer; margin-inline-start:auto; }
+  .toggle-old input { accent-color: var(--accent); }
+
+  main.wrap { padding-top: 18px; }
+  .group { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow); }
+  .group > .ghead { display:flex; align-items:center; gap:12px; padding: 14px 16px; cursor: pointer;
+    background: linear-gradient(0deg, rgba(255,255,255,.02), transparent); }
+  .ghead .gtitle { font-size: 16px; font-weight: 700; }
+  .ghead .gtitle .gsub { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+  .ghead .gright { margin-inline-start: auto; display:flex; align-items:center; gap: 12px; text-align:left; }
+  .ghead .gcredits { font-variant-numeric: tabular-nums; font-weight:700; font-size:13.5px; white-space:nowrap; }
+  .ghead .gcredits small { color: var(--muted); font-weight: 500; }
+  .ghead .gbar { width: 120px; }
+  .gbar { height: 8px; background: var(--chip); border-radius:99px; overflow:hidden; display:flex; }
+  .gbar > i { height:100%; display:block; }
+  .gbar .bd { background: linear-gradient(90deg,#34d399,#6ee7b7); }
+  .gbar .bc { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+  .gbar .bp { background: linear-gradient(90deg,#3b82f6,#7dd3fc); }
+  .pill { font-size: 11px; padding: 3px 9px; border-radius: 99px; border:1px solid var(--line); white-space:nowrap; }
+  .pill.ok { background: rgba(52,211,153,.12); color: var(--done); border-color: rgba(52,211,153,.4); }
+  .pill.no { background: rgba(246,196,83,.10); color: var(--warn); border-color: rgba(246,196,83,.35); }
+  .pill.plan { background: rgba(79,156,255,.12); color: var(--accent); border-color: rgba(79,156,255,.4); }
+  .pill.cur { background: rgba(251,191,36,.12); color: var(--cur); border-color: rgba(251,191,36,.4); }
+  .chev { transition: transform .2s; color: var(--muted); }
+  .group.collapsed .chev { transform: rotate(-90deg); }
+  .group.collapsed .gbody { display:none; }
+
+  .gbody { padding: 4px 16px 16px; border-top: 1px solid var(--line); }
+  .gnote { color: var(--muted); font-size: 12.5px; background: var(--panel-2); border:1px dashed var(--line); border-radius: 10px; padding: 8px 12px; margin: 12px 0; }
+  .subhead { font-size: 13px; color: var(--accent-2); font-weight: 700; margin: 16px 2px 6px; display:flex; align-items:center; gap:10px; }
+  .subhead .req { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .subhead .ministatus { margin-inline-start:auto; font-size: 11.5px; }
+
+  table.courses { width: 100%; border-collapse: collapse; }
+  table.courses td { padding: 7px 6px; border-bottom: 1px solid rgba(43,58,77,.6); vertical-align: middle; }
+  table.courses tr:last-child td { border-bottom: none; }
+  .c-status { width: 108px; }
+  .c-code { width: 56px; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+  .c-name { font-size: 14px; }
+  .c-name a { color: var(--txt); }
+  .c-name a:hover { color: var(--accent); }
+  .c-level { width: 70px; }
+  .c-cr { width: 44px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .c-grade { width: 78px; text-align: center; }
+  .c-grade input { width: 58px; background: var(--bg); color: var(--txt); border:1px solid var(--line); border-radius: 8px; padding: 4px 6px; text-align:center; font-family: inherit; }
+  .c-grade input:disabled { opacity: .3; }
+  tr.row-done { background: rgba(52,211,153,.07); }
+  tr.row-cur  { background: rgba(251,191,36,.08); }
+  tr.row-plan { background: rgba(79,156,255,.07); }
+
+  /* segmented status control */
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg button { border:none; background:var(--bg); color:var(--muted); width:33px; height:28px; cursor:pointer; font-size:13px; padding:0; font-family:inherit; border-inline-start:1px solid var(--line); }
+  .seg button:first-child { border-inline-start:none; }
+  .seg button.on-done { background:var(--done); color:#062b1c; }
+  .seg button.on-cur  { background:var(--cur);  color:#3a2c05; }
+  .seg button.on-plan { background:var(--plan); color:#06203c; }
+  .seg button:hover { filter: brightness(1.15); }
+
+  .lvl { font-size: 10.5px; padding: 2px 7px; border-radius: 6px; border:1px solid var(--line); color: var(--muted); white-space:nowrap; }
+  .lvl.adv { color: #d8b4fe; border-color: rgba(216,180,254,.4); background: rgba(216,180,254,.08); }
+  .lvl.open { color: #7dd3fc; border-color: rgba(125,211,252,.35); }
+
+  .cluster { border:1px solid var(--line); border-radius: 12px; padding: 4px 12px 10px; margin: 8px 0; background: var(--panel-2); }
+  .cluster.satisfied { border-color: rgba(52,211,153,.4); }
+  .cluster.cur { border-color: rgba(251,191,36,.4); }
+  .cluster.planned { border-color: rgba(79,156,255,.4); }
+
+  .free-add { display:flex; flex-wrap: wrap; gap: 8px; align-items:center; margin: 12px 0 6px; }
+  .free-add input, .free-add label, .free-add select { background: var(--bg); color: var(--txt); border:1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-family: inherit; font-size: 13px; }
+  .free-add input[type=text] { flex: 1 1 200px; }
+  .free-add input[type=number] { width: 84px; }
+  .free-add label.chk { display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .free-add button { background: var(--accent); color:#08203c; border:none; border-radius:8px; padding:8px 14px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .del { background:none; border:none; color: var(--danger); cursor:pointer; font-size: 15px; line-height:1; }
+
+  /* semester panels */
+  .sem-sub { margin: 8px 0; }
+  .sem-sub h4 { margin: 6px 2px; font-size: 13.5px; }
+  .sem-sub.cur h4 { color: var(--cur); }
+  .sem-sub.next h4 { color: var(--accent); }
+  .sem-table { width:100%; border-collapse:collapse; }
+  .sem-table td { padding:6px; border-bottom:1px solid rgba(43,58,77,.5); font-size:13.5px; }
+  .sem-table .tot { font-weight:700; }
+  .empty { color: var(--muted); font-size:13px; padding:6px; }
+
+  #left-panel ul { margin: 6px 0; padding-inline-start: 20px; }
+  #left-panel li { margin: 6px 0; font-size: 14px; }
+  #left-panel li.ok { color: var(--done); list-style:none; margin-inline-start:-16px; }
+  #left-panel li.ok::before { content:"✓ "; }
+  #left-panel li.todo::marker { color: var(--warn); }
+  #left-panel .cover { color: var(--accent); font-size:12px; }
+  .done-banner { text-align:center; padding: 18px; font-size: 18px; color: var(--done); font-weight:700; }
+  .grad-soon { text-align:center; padding: 12px; color: var(--accent); font-weight:600; font-size:14px; }
+
+  footer { text-align:center; color: var(--muted); font-size: 12px; padding: 24px; }
+  @media (max-width: 760px) { .planner { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 680px) { .c-code { display:none; } .ghead .gbar { display:none; } .ghead .gcredits{font-size:12px;} }
+  @media print { body{background:#fff;color:#000;} header .toolbar,.free-add,.chev{display:none!important;} .group{box-shadow:none;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <h1>מתכנן תואר ראשון בפסיכולוגיה
+      <small>האוניברסיטה הפתוחה · חד-חוגי (B.A.) · ידיעון תשפ״ז</small>
+    </h1>
+
+    <div class="planner">
+      <div class="pcard done"><div class="label">✅ סיימתי</div><div class="num" id="hn-done">0</div></div>
+      <div class="pcard cur"><div class="label">📖 בלימוד כעת</div><div class="num" id="hn-cur">0</div></div>
+      <div class="pcard plan"><div class="label">📅 מתוכנן לסמסטר הבא</div><div class="num" id="hn-plan">0</div></div>
+      <div class="pcard left"><div class="label">⏳ נותרו אחר כך</div><div class="num" id="hn-left">0</div></div>
+    </div>
+
+    <div class="megabar" id="megabar"></div>
+    <div class="legend">
+      <span class="l-done">הושלם</span><span class="l-cur">בלימוד כעת</span><span class="l-plan">מתוכנן לסמסטר הבא</span><span class="l-left">נותר</span>
+    </div>
+    <div class="substats" id="substats" style="margin-top:8px;"></div>
+
+    <div class="toolbar">
+      <button class="btn" id="btn-collapse">⛶ כווץ/הרחב</button>
+      <button class="btn" id="btn-export">⬇ גיבוי</button>
+      <label class="btn" for="file-import">⬆ ייבוא</label>
+      <input type="file" id="file-import" accept="application/json" hidden />
+      <button class="btn" id="btn-print">🖨 הדפסה</button>
+      <button class="btn" id="btn-advance" title="מעבר סמסטר: 'בלימוד כעת' הופך ל'הושלם', ו'מתוכנן' הופך ל'בלימוד כעת'">⏭ סיום סמסטר</button>
+      <button class="btn danger" id="btn-reset">↺ איפוס</button>
+      <label class="toggle-old" title="פטור מחלוקה לאשכולות למי שהחל/ה לפני סמסטר 2025א עם תכנית מאושרת">
+        <input type="checkbox" id="old-program" /> תכנית ישנה (לפני 2025א — ללא חובת אשכולות)
+      </label>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="app"></main>
+
+<footer>
+  הנתונים נשמרים מקומית בדפדפן שלך בלבד (localStorage). אין שרת ואין שליחת מידע.<br>
+  מבוסס על תכנית הלימודים הרשמית (תכנית 48, ידיעון תשפ״ז). לאימות סופי יש לפנות לייעוץ האקדמי.
+</footer>
+
+<script>
+/* ============================================================
+   נתוני התכנית — בוגר B.A. בפסיכולוגיה (חד-חוגי), תכנית 48
+   120 נ"ז (108 בקורסים + 12 בעבודות סמינריוניות), ובהן 24 נ"ז מתקדמות
+   ============================================================ */
+const OPENU_COURSE = code => `https://www.openu.ac.il/courses/${code}.htm`;
+const ADV = "מתקדם";
+
+const PROGRAM = {
+  totalCredits: 120,
+  advancedCredits: 24,
+  foundation: {
+    id:"foundation", letter:"א", title:"לימודי תשתית", req:'חובה — 17 נ"ז', target:17,
+    courses: [
+      { code:"30111", name:"מבוא לסטטיסטיקה לתלמידי מדעי החברה א", level:"פתיחה", cr:3 },
+      { code:"30112", name:"מבוא לסטטיסטיקה לתלמידי מדעי החברה ב", level:"רגיל", cr:3 },
+      { code:"10285", name:"שיטות מחקר במדעי החברה: עקרונות המחקר וסגנונותיו", level:"רגיל", cr:4 },
+      { code:"10286", name:"רגרסיה וניתוח שונות", level:"רגיל", cr:3 },
+      { code:"10851", name:"פסיכולוגיה מחקרית: התנסות במחקר ובכתיבה מדעית", level:"רגיל", cr:4 },
+    ]
+  },
+  research: {
+    id:"research", letter:"ב", title:"השתתפות במחקרים", req:"תנאי מעבר", code:"91412",
+    note:"השתתפות במחקר במשך שלוש שעות. תנאי קבלה לקורסים אישיות (10269), פסיכולוגיה קוגניטיבית (10264) וכל הקורסים המתקדמים. להשלים פעם אחת, מומלץ מוקדם ככל האפשר."
+  },
+  psyMandatory: {
+    id:"psyMandatory", letter:"ג1", title:"פסיכולוגיה — חובה", req:'46 נ"ז (כל הקורסים)', target:46,
+    courses: [
+      { code:"10136", name:"מבוא לפסיכולוגיה", level:"פתיחה", cr:6 },
+      { code:"10104", name:"פסיכולוגיה חברתית", level:"רגיל", cr:6 },
+      { code:"10264", name:"פסיכולוגיה קוגניטיבית", level:"רגיל", cr:6 },
+      { code:"10493", name:"פסיכולוגיה התפתחותית: מינקות להתבגרות", level:"רגיל", cr:4 },
+      { code:"10269", name:"אישיות: תאוריה ומחקר", level:"רגיל", cr:4 },
+      { code:"10252", name:"מבחנים פסיכולוגיים: תאוריה ומעשה", level:"רגיל", cr:4 },
+      { code:"10615", name:"פסיכולוגיה פיזיולוגית (קורס שנתי)", level:"רגיל", cr:6 },
+      { code:"10619", name:"פסיכופתולוגיה", level:"רגיל", cr:4 },
+      { code:"10524", name:"היסטוריה של הפסיכולוגיה", level:ADV, cr:6 },
+    ]
+  },
+  psyElectiveRegular: {
+    courses: [
+      { code:"10781", name:"פסיכולוגיה של הזדקנות וזיקנה", level:"רגיל", cr:3 },
+      { code:"10759", name:"אינטליגנציה רגשית", level:"רגיל", cr:3 },
+      { code:"10882", name:"תקשורת, שפה ודיבור: התפתחות טיפוסית ולא טיפוסית", level:"רגיל", cr:4 },
+      { code:"10850", name:"התנסות מעשית בפסיכולוגיה", level:"רגיל", cr:4 },
+    ]
+  },
+  psyElectiveAdvanced: {
+    clusters: [
+      { key:"א", required:true, courses:[
+        { code:"10557", name:"פסיכולוגיה בין-תרבותית", level:ADV, cr:6 },
+        { code:"10352", name:"הפסיכולוגיה של השיפוט האינטואיטיבי", level:ADV, cr:6 },
+        { code:"10575", name:"יחסים בין קבוצות", level:ADV, cr:6 },
+      ]},
+      { key:"ב", required:true, courses:[
+        { code:"10966", name:"קוגניציה חזותית", level:ADV, cr:6 },
+        { code:"10941", name:"מוח וקוגניציה", level:ADV, cr:6 },
+        { code:"10593", name:"ליקויי קריאה", level:ADV, cr:6 },
+        { code:"10905", name:"ליקויי למידה בחשבון: היבטים קוגניטיביים, נוירופסיכולוגיים וחינוכיים", level:ADV, cr:6 },
+      ]},
+      { key:"ג", required:true, courses:[
+        { code:"10973", name:"פסיכולוגיה של משא ומתן", level:ADV, cr:6 },
+        { code:"10904", name:"שינה והפרעות שינה בילדות", level:ADV, cr:6 },
+        { code:"11315", name:"הרצף האוטיסטי (באנגלית)", level:ADV, cr:6 },
+      ]},
+      { key:"ד", required:false, label:"אשכול ד׳ — סמינרי מצטיינים (רשות)", courses:[
+        { code:"10936", name:"סמינר מחקר למצטיינים: פסיכוביולוגיה", level:ADV, cr:6 },
+        { code:"10914", name:"סמינר מחקר למצטיינים: קוגניציה ואיום", level:ADV, cr:6 },
+        { code:"10969", name:"סמינר מחקר למצטיינים: שפה וזיקנה", level:ADV, cr:6 },
+        { code:"10983", name:"סמינר מחקר למצטיינים: קשב וקוגניציה", level:ADV, cr:6 },
+      ]},
+    ]
+  },
+};
+const ELECTIVE_MIN=21, ELECTIVE_ADV_MIN=18, SEMINAR_CREDITS=12, FREE_MIN=24;
+
+/* ============================================================ מצב ============================================================ */
+const LS_KEY = "openu_psy_planner_v3";
+const ST_DONE="done", ST_CUR="current", ST_PLAN="planned";
+const DEFAULT_STATE = {
+  status: {},     // code -> "done" | "current" | "planned"
+  grades: {},     // code -> number
+  research: "",   // "" | done | current | planned
+  oldProgram: false,
+  seminars: [
+    { label:"עבודה סמינריונית אמפירית (חובה)", empirical:true,  cr:6, status:"", grade:null },
+    { label:"עבודה סמינריונית נוספת",          empirical:false, cr:6, status:"", grade:null },
+  ],
+  free: [],       // {id,name,cr,grade,broadening,advanced,status}
+  general: { english:"", library:"" },
+};
+let S = load();
+
+function load(){
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return migrate(Object.assign(structuredClone(DEFAULT_STATE), JSON.parse(raw)));
+    const v2 = localStorage.getItem("openu_psy_planner_v2");
+    if (v2) return migrate(Object.assign(structuredClone(DEFAULT_STATE), JSON.parse(v2)));
+    const v1 = localStorage.getItem("openu_psy_tracker_v1");
+    if (v1) return migrate(fromV1(JSON.parse(v1)));
+    return structuredClone(DEFAULT_STATE);
+  } catch { return structuredClone(DEFAULT_STATE); }
+}
+function fromV1(o){
+  const s = structuredClone(DEFAULT_STATE);
+  if (o.done) Object.keys(o.done).forEach(c=>{ if(o.done[c]) s.status[c]="done"; });
+  s.grades = o.grades||{}; s.research = o.research?"done":""; s.oldProgram=!!o.oldProgram;
+  if (Array.isArray(o.seminars)) s.seminars = o.seminars.map((x,i)=>({ ...s.seminars[i], ...x, status:x.done?"done":"" }));
+  if (Array.isArray(o.free)) s.free = o.free.map(f=>({ ...f, status:f.done?"done":"" }));
+  if (o.general) s.general = { english:o.general.english?"done":"", library:o.general.library?"done":"" };
+  return s;
+}
+function migrate(s){
+  if (typeof s.research==="boolean") s.research = s.research?"done":"";
+  if (s.general && typeof s.general.english==="boolean") s.general.english = s.general.english?"done":"";
+  if (s.general && typeof s.general.library==="boolean") s.general.library = s.general.library?"done":"";
+  s.seminars = s.seminars.map(x=>({ ...x, status: typeof x.done==="boolean" ? (x.done?"done":(x.status||"")) : (x.status||"") }));
+  s.free = (s.free||[]).map(f=>({ ...f, status: typeof f.done==="boolean" ? (f.done?"done":(f.status||"")) : (f.status||"") }));
+  return s;
+}
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(S)); }
+
+/* ============================================================ חישוב ============================================================ */
+const isAdv = c => c.level === ADV;
+const allFixedCourses = () => [
+  ...PROGRAM.foundation.courses, ...PROGRAM.psyMandatory.courses,
+  ...PROGRAM.psyElectiveRegular.courses,
+  ...PROGRAM.psyElectiveAdvanced.clusters.flatMap(cl=>cl.courses),
+];
+function numOrNull(v){ if(v===""||v==null) return null; const n=+v; return isNaN(n)?null:n; }
+
+// {d,c,p} = done / current / planned credit split
+function bucket(courses){
+  let d=0,c=0,p=0;
+  for(const x of courses){ const st=S.status[x.code];
+    if(st===ST_DONE)d+=x.cr; else if(st===ST_CUR)c+=x.cr; else if(st===ST_PLAN)p+=x.cr; }
+  return {d,c,p};
+}
+
+function compute(){
+  const r = {};
+  r.found = bucket(PROGRAM.foundation.courses);
+  r.mand  = bucket(PROGRAM.psyMandatory.courses);
+
+  const reg = bucket(PROGRAM.psyElectiveRegular.courses);
+  const advCourses = PROGRAM.psyElectiveAdvanced.clusters.flatMap(cl=>cl.courses);
+  const adv = bucket(advCourses);
+  r.elDone=reg.d+adv.d; r.elCur=reg.c+adv.c; r.elPlan=reg.p+adv.p;
+  r.elAdvDone=adv.d; r.elAdvCur=adv.c; r.elAdvPlan=adv.p;
+
+  r.clusters = {};
+  PROGRAM.psyElectiveAdvanced.clusters.forEach(cl=>{
+    let d=false,c=false,p=false;
+    cl.courses.forEach(x=>{ const st=S.status[x.code]; if(st===ST_DONE)d=true; else if(st===ST_CUR)c=true; else if(st===ST_PLAN)p=true; });
+    r.clusters[cl.key]={d,c,p};
+  });
+  r.clustersDoneMet = S.oldProgram ? true : (r.clusters["א"].d && r.clusters["ב"].d && r.clusters["ג"].d);
+  r.electiveOk = (r.elDone>=ELECTIVE_MIN) && (r.elAdvDone>=ELECTIVE_ADV_MIN) && r.clustersDoneMet;
+
+  // ד סמינריונים
+  const semBy = st => S.seminars.filter(s=>s.status===st).reduce((a,s)=>a+s.cr,0);
+  r.semDone=semBy(ST_DONE); r.semCur=semBy(ST_CUR); r.semPlan=semBy(ST_PLAN);
+  r.semEmpDone = S.seminars.some(s=>s.status===ST_DONE && s.empirical);
+  r.seminarOk = (r.semDone>=SEMINAR_CREDITS) && r.semEmpDone;
+
+  // ה בחירה חופשית (כולל עודף פסיכולוגיה מעבר ל-21)
+  const freeBy = st => S.free.filter(f=>f.status===st).reduce((a,f)=>a+(+f.cr||0),0);
+  r.freeDone=freeBy(ST_DONE); r.freeCur=freeBy(ST_CUR); r.freePlan=freeBy(ST_PLAN);
+  r.surplusDone = Math.max(0, r.elDone - ELECTIVE_MIN);
+  r.surplusCur  = Math.max(0, (r.elDone+r.elCur) - ELECTIVE_MIN - r.surplusDone);
+  r.surplusPlan = Math.max(0, (r.elDone+r.elCur+r.elPlan) - ELECTIVE_MIN - r.surplusDone - r.surplusCur);
+  r.freeTotDone=r.freeDone+r.surplusDone; r.freeTotCur=r.freeCur+r.surplusCur; r.freeTotPlan=r.freePlan+r.surplusPlan;
+  r.broadDone = S.free.some(f=>f.status===ST_DONE && f.broadening);
+  r.broadCur  = S.free.some(f=>f.status===ST_CUR  && f.broadening);
+  r.broadPlan = S.free.some(f=>f.status===ST_PLAN && f.broadening);
+  r.freeOk = (r.freeTotDone>=FREE_MIN) && r.broadDone;
+
+  // נ"ז מתקדמות
+  let aD=0,aC=0,aP=0;
+  PROGRAM.psyMandatory.courses.forEach(x=>{ if(isAdv(x)){ const st=S.status[x.code]; if(st===ST_DONE)aD+=x.cr; else if(st===ST_CUR)aC+=x.cr; else if(st===ST_PLAN)aP+=x.cr; } });
+  aD+=r.elAdvDone; aC+=r.elAdvCur; aP+=r.elAdvPlan;
+  S.free.forEach(f=>{ if(f.advanced){ if(f.status===ST_DONE)aD+=(+f.cr||0); else if(f.status===ST_CUR)aC+=(+f.cr||0); else if(f.status===ST_PLAN)aP+=(+f.cr||0); } });
+  r.advDone=aD; r.advCur=aC; r.advPlan=aP;
+
+  // דרישות כלליות / מחקר
+  const gst=(v)=>({done:v===ST_DONE, cur:v===ST_CUR, plan:v===ST_PLAN});
+  r.english=gst(S.general.english); r.library=gst(S.general.library); r.researchS=gst(S.research);
+
+  // סך הכול
+  r.doneTotal = r.found.d + r.mand.d + r.elDone + r.freeDone + r.semDone;
+  r.curTotal  = r.found.c + r.mand.c + r.elCur  + r.freeCur  + r.semCur;
+  r.planTotal = r.found.p + r.mand.p + r.elPlan + r.freePlan + r.semPlan;
+  r.leftTotal = Math.max(0, PROGRAM.totalCredits - r.doneTotal - r.curTotal - r.planTotal);
+
+  r.allDone = (r.found.d>=PROGRAM.foundation.target) && r.researchS.done &&
+    (r.mand.d>=PROGRAM.psyMandatory.target) && r.electiveOk && r.seminarOk && r.freeOk &&
+    (r.doneTotal>=PROGRAM.totalCredits) && (r.advDone>=PROGRAM.advancedCredits) &&
+    r.english.done && r.library.done;
+
+  // GPA — שהושלם בלבד + ציון
+  let gp=0, gc=0; const add=(cr,g)=>{ if(typeof g==="number"&&!isNaN(g)){ gp+=g*cr; gc+=cr; } };
+  allFixedCourses().forEach(x=>{ if(S.status[x.code]===ST_DONE) add(x.cr, S.grades[x.code]); });
+  S.free.forEach(f=>{ if(f.status===ST_DONE) add(+f.cr||0, numOrNull(f.grade)); });
+  S.seminars.forEach(s=>{ if(s.status===ST_DONE) add(s.cr, numOrNull(s.grade)); });
+  r.gpa = gc>0?gp/gc:null; r.gpaCredits=gc;
+  return r;
+}
+
+/* ============================================================ רינדור ============================================================ */
+const $ = (sel,el=document)=>el.querySelector(sel);
+const el = (tag,cls,html)=>{ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; };
+const pct = (a,b)=> b>0 ? Math.min(100,(a/b)*100) : 0;
+const r1 = n => Math.round(n*10)/10;
+function levelBadge(level){ const cls= level===ADV?"lvl adv":(level==="פתיחה"?"lvl open":"lvl"); return `<span class="${cls}">${level}</span>`; }
+function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+function statusSeg(kind, id, st){
+  return `<div class="seg" data-kind="${kind}" data-id="${id}">
+    <button data-st="done" class="${st===ST_DONE?"on-done":""}" title="סיימתי">✓</button>
+    <button data-st="current" class="${st===ST_CUR?"on-cur":""}" title="בלימוד כעת (סמסטר נוכחי)">📖</button>
+    <button data-st="planned" class="${st===ST_PLAN?"on-plan":""}" title="מתוכנן לסמסטר הבא">📅</button>
+  </div>`;
+}
+function rowClass(st){ return st===ST_DONE?"row-done":(st===ST_CUR?"row-cur":(st===ST_PLAN?"row-plan":"")); }
+
+function courseRow(c){
+  const st = S.status[c.code]||"";
+  const tr = el("tr", rowClass(st));
+  tr.innerHTML = `
+    <td class="c-status">${statusSeg("course", c.code, st)}</td>
+    <td class="c-code">${c.code}</td>
+    <td class="c-name"><a href="${OPENU_COURSE(c.code)}" target="_blank" rel="noopener">${c.name}</a></td>
+    <td class="c-level">${levelBadge(c.level)}</td>
+    <td class="c-cr">${c.cr}</td>
+    <td class="c-grade"><input type="number" min="0" max="100" placeholder="ציון" data-grade="${c.code}"
+        value="${S.grades[c.code] ?? ""}" ${st===ST_DONE?"":"disabled"}></td>`;
+  return tr;
+}
+function tableFrom(courses){ const t=el("table","courses"), tb=el("tbody"); courses.forEach(c=>tb.appendChild(courseRow(c))); t.appendChild(tb); return t; }
+
+function gbar(d,c,p,target){
+  return `<div class="gbar">
+    <i class="bd" style="width:${pct(d,target)}%"></i>
+    <i class="bc" style="width:${pct(c,target)}%"></i>
+    <i class="bp" style="width:${pct(p,target)}%"></i></div>`;
+}
+function creditTriple(d,c,p,target){
+  const parts=[`<span style="color:var(--done)">${r1(d)}</span>`];
+  if(c) parts.push(`<span style="color:var(--cur)">${r1(c)}</span>`);
+  if(p) parts.push(`<span style="color:var(--accent)">${r1(p)}</span>`);
+  return parts.join("+") + ` <small>/ ${target} נ"ז</small>`;
+}
+function groupShell(g, d, c, p, target, ok){
+  const node = el("section","group"); node.dataset.gid=g.id;
+  let status="";
+  if (target!=null){
+    if (ok) status=`<span class="pill ok">הושלם</span>`;
+    else if (d+c+p>=target) status=`<span class="pill plan">מכוסה בתכנון</span>`;
+    else status=`<span class="pill no">בתהליך</span>`;
+  }
+  node.innerHTML = `
+    <div class="ghead"><span class="chev">▾</span>
+      <div class="gtitle">${g.letter}. ${g.title}<div class="gsub">${g.req||""}</div></div>
+      <div class="gright">
+        <span class="gcredits">${target!=null?creditTriple(d,c,p,target):""}</span>
+        ${target!=null ? gbar(d,c,p,target) : ""}
+        ${status}
+      </div></div>
+    <div class="gbody"></div>`;
+  $(".ghead",node).addEventListener("click", e=>{ if(e.target.closest("a")||e.target.closest(".seg")) return; node.classList.toggle("collapsed"); });
+  return node;
+}
+function subhead(title,right){ const h=el("div","subhead"); h.innerHTML=`<span>${title}</span><span class="ministatus">${right||""}</span>`; return h; }
+
+function render(){
+  const r = compute();
+  renderHeadline(r);
+  const app = $("#app"); app.innerHTML="";
+
+  app.appendChild(renderSemesterPanel(r));
+  app.appendChild(renderLeftPanel(r));
+
+  // א תשתית
+  { const g=PROGRAM.foundation;
+    const node=groupShell(g, r.found.d, r.found.c, r.found.p, g.target, r.found.d>=g.target);
+    $(".gbody",node).appendChild(tableFrom(g.courses)); app.appendChild(node); }
+
+  // ב מחקרים
+  { const g=PROGRAM.research; const rs=r.researchS;
+    const node=groupShell(g, null,null,null,null, rs.done);
+    const pill = rs.done?`<span class="pill ok">הושלם</span>`:(rs.cur?`<span class="pill cur">בלימוד</span>`:(rs.plan?`<span class="pill plan">מתוכנן</span>`:`<span class="pill no">חסר</span>`));
+    $(".gright",node).insertAdjacentHTML("afterbegin", pill);
+    const b=$(".gbody",node); b.appendChild(el("div","gnote",g.note));
+    const t=el("table","courses"), tb=el("tbody"); const st=S.research||"";
+    const tr=el("tr",rowClass(st));
+    tr.innerHTML=`<td class="c-status">${statusSeg("research","91412",st)}</td>
+      <td class="c-name"><a href="${OPENU_COURSE(g.code)}" target="_blank">${g.code} — השתתפות במחקרים בפסיכולוגיה ובחינוך</a></td>
+      <td class="c-cr">—</td>`;
+    tb.appendChild(tr); t.appendChild(tb); b.appendChild(t); app.appendChild(node); }
+
+  // ג חובה
+  { const g=PROGRAM.psyMandatory;
+    const node=groupShell(g, r.mand.d, r.mand.c, r.mand.p, g.target, r.mand.d>=g.target);
+    $(".gbody",node).appendChild(tableFrom(g.courses)); app.appendChild(node); }
+
+  // ג בחירה
+  { const g={ id:"psyElective", letter:"ג2", title:"פסיכולוגיה — בחירה", req:`לפחות ${ELECTIVE_MIN} נ"ז, ובהן ≥${ELECTIVE_ADV_MIN} מתקדמות` };
+    const node=groupShell(g, r.elDone, r.elCur, r.elPlan, ELECTIVE_MIN, r.electiveOk);
+    const b=$(".gbody",node);
+    b.appendChild(subhead("קורסים רגילים",""));
+    b.appendChild(tableFrom(PROGRAM.psyElectiveRegular.courses));
+    b.appendChild(subhead("קורסים מתקדמים",
+      creditTriple(r.elAdvDone, r.elAdvCur, r.elAdvPlan, ELECTIVE_ADV_MIN).replace('נ"ז','נ"ז מתקדמות') +
+      (S.oldProgram ? " · תכנית ישנה" : " · קורס מכל אשכול א׳/ב׳/ג׳")));
+    PROGRAM.psyElectiveAdvanced.clusters.forEach(cl=>{
+      const cs=r.clusters[cl.key];
+      const box=el("div","cluster"+(cs.d?" satisfied":(cs.c?" cur":(cs.p?" planned":""))));
+      const label=cl.label||`אשכול ${cl.key}׳`;
+      const reqTxt=cl.required?(S.oldProgram?"":"נדרש קורס אחד"):"רשות";
+      let ms="";
+      if(cs.d) ms=`<span class="pill ok">✓ נלמד</span>`;
+      else if(cs.c) ms=`<span class="pill cur">📖 בלימוד</span>`;
+      else if(cs.p) ms=`<span class="pill plan">📅 מתוכנן</span>`;
+      else if(cl.required && !S.oldProgram) ms=`<span class="pill no">חסר</span>`;
+      const head=el("div","subhead");
+      head.innerHTML=`<span>${label}</span><span class="req">${reqTxt}</span><span class="ministatus">${ms}</span>`;
+      box.appendChild(head); box.appendChild(tableFrom(cl.courses)); b.appendChild(box);
+    });
+    if(!S.oldProgram) b.appendChild(el("div","gnote",
+      "החל מסמסטר 2025א: קורס מתקדם אחד מכל אחד מהאשכולות א׳, ב׳, ג׳ (≥18 נ\"ז מתקדמות). אשכול ד׳ (סמינרי מצטיינים) הוא רשות."));
+    app.appendChild(node); }
+
+  // ד סמינריונים
+  { const g={ id:"seminars", letter:"ד", title:"דרישות סמינריוניות", req:'12 נ"ז — שתי עבודות, ≥1 אמפירית' };
+    const node=groupShell(g, r.semDone, r.semCur, r.semPlan, SEMINAR_CREDITS, r.seminarOk);
+    const b=$(".gbody",node); const t=el("table","courses"), tb=el("tbody");
+    S.seminars.forEach((s,i)=>{ const st=s.status||""; const tr=el("tr",rowClass(st));
+      tr.innerHTML=`<td class="c-status">${statusSeg("seminar",i,st)}</td>
+        <td class="c-name">${s.label}
+          <label style="display:inline-flex;gap:5px;align-items:center;margin-inline-start:10px;font-size:12px;color:var(--muted);">
+            <input type="checkbox" data-sem-emp="${i}" ${s.empirical?"checked":""}> אמפירית</label></td>
+        <td class="c-level"></td><td class="c-cr">${s.cr}</td>
+        <td class="c-grade"><input type="number" min="0" max="100" placeholder="ציון" data-sem-grade="${i}"
+            value="${s.grade ?? ""}" ${st===ST_DONE?"":"disabled"}></td>`;
+      tb.appendChild(tr); });
+    t.appendChild(tb); b.appendChild(t);
+    if(!r.semEmpDone && r.semDone>0) b.appendChild(el("div","gnote","נדרשת לפחות עבודה סמינריונית אמפירית אחת."));
+    app.appendChild(node); }
+
+  // ה בחירה חופשית
+  { const g={ id:"free", letter:"ה", title:"בחירה חופשית", req:`לפחות ${FREE_MIN} נ"ז, כולל קורס מרחיב-דעת` };
+    const node=groupShell(g, r.freeTotDone, r.freeTotCur, r.freeTotPlan, FREE_MIN, r.freeOk);
+    const b=$(".gbody",node);
+    b.appendChild(el("div","gnote",
+      "אפשר להשלים מקורסים בכל דיסציפלינה. חובה קורס מרחיב-דעת אחד (מדעי הרוח או מדעים). " +
+      (r.surplusDone>0 ? `נוספו ${r.surplusDone} נ"ז עודפות שהושלמו מבחירת פסיכולוגיה. ` : "")));
+    const add=el("div","free-add");
+    add.innerHTML=`
+      <input type="text" id="free-name" placeholder="שם הקורס (וקוד אם תרצה)">
+      <input type="number" id="free-cr" placeholder='נ"ז' min="0" max="12" step="1">
+      <input type="number" id="free-grade" placeholder="ציון" min="0" max="100">
+      <select id="free-status"><option value="done">סיימתי</option><option value="current">בלימוד כעת</option><option value="planned">מתוכנן</option></select>
+      <label class="chk"><input type="checkbox" id="free-broad"> מרחיב-דעת</label>
+      <label class="chk"><input type="checkbox" id="free-adv"> מתקדם</label>
+      <button id="free-add-btn">+ הוסף</button>`;
+    b.appendChild(add);
+    if (S.free.length){
+      const t=el("table","courses"), tb=el("tbody");
+      S.free.forEach(f=>{ const st=f.status||""; const tr=el("tr",rowClass(st));
+        tr.innerHTML=`<td class="c-status">${statusSeg("free", f.id, st)}</td>
+          <td class="c-name">${escapeHtml(f.name)||"(ללא שם)"}
+            ${f.broadening?'<span class="lvl" style="color:var(--accent-2);border-color:rgba(110,231,183,.4)">מרחיב-דעת</span>':''}
+            ${f.advanced?levelBadge(ADV):''}</td>
+          <td class="c-cr">${f.cr}</td>
+          <td class="c-grade"><input type="number" min="0" max="100" placeholder="ציון" data-free-grade="${f.id}"
+              value="${f.grade ?? ""}" ${st===ST_DONE?"":"disabled"}></td>
+          <td style="width:28px"><button class="del" data-free-del="${f.id}" title="מחיקה">✕</button></td>`;
+        tb.appendChild(tr); });
+      t.appendChild(tb); b.appendChild(t);
+    } else b.appendChild(el("div","gnote","עדיין לא הוספת קורסי בחירה חופשית."));
+    app.appendChild(node); }
+
+  // ו דרישות כלליות
+  { const g={ id:"general", letter:"ו", title:"דרישות כלליות לתואר", req:"אנגלית · ספרייה · מרחיב-דעת" };
+    const ok = r.english.done && r.library.done && r.broadDone;
+    const node=groupShell(g, null,null,null,null, ok);
+    $(".gright",node).insertAdjacentHTML("afterbegin", ok?`<span class="pill ok">הושלם</span>`:`<span class="pill no">בתהליך</span>`);
+    const b=$(".gbody",node);
+    const mk=(name,label,hint)=>{ const st=S.general[name]||""; return `<tr class="${rowClass(st)}">
+      <td class="c-status">${statusSeg("general",name,st)}</td>
+      <td class="c-name">${label} ${hint?`<span style="color:var(--muted);font-size:12px">${hint}</span>`:""}</td></tr>`; };
+    const bIcon = r.broadDone?'✓':(r.broadCur?'📖':(r.broadPlan?'📅':'–'));
+    const bIconCls = r.broadDone?'on-done':(r.broadCur?'on-cur':(r.broadPlan?'on-plan':''));
+    const bHint = r.broadDone?'סומן בבחירה חופשית ✓':(r.broadCur?'בלימוד בבחירה חופשית':(r.broadPlan?'מתוכנן בבחירה חופשית':'סמן/י קורס מרחיב-דעת בסעיף ה׳'));
+    const t=el("table","courses");
+    t.innerHTML=`<tbody>
+      ${mk("english","עמידה בדרישות האנגלית","(פטור / קורסי אנגלית כנדרש)")}
+      ${mk("library","הדרכה ביבליוגרפית בספרייה","")}
+      <tr><td class="c-status"><div class="seg"><button class="${bIconCls}" disabled>${bIcon}</button></div></td>
+        <td class="c-name">קורס מרחיב-דעת <span style="color:var(--muted);font-size:12px">(${bHint})</span></td></tr>
+      </tbody>`;
+    b.appendChild(t); app.appendChild(node); }
+
+  bindDynamic();
+}
+
+function renderHeadline(r){
+  $("#hn-done").innerHTML = `${r.doneTotal}<small> נ"ז</small>`;
+  $("#hn-cur").innerHTML  = `${r.curTotal}<small> נ"ז</small>`;
+  $("#hn-plan").innerHTML = `${r.planTotal}<small> נ"ז</small>`;
+  $("#hn-left").innerHTML = `${r.leftTotal}<small> נ"ז</small>`;
+  $("#megabar").innerHTML =
+    `<i class="mb-done" style="width:${pct(r.doneTotal,PROGRAM.totalCredits)}%"></i>`+
+    `<i class="mb-cur"  style="width:${pct(r.curTotal,PROGRAM.totalCredits)}%"></i>`+
+    `<i class="mb-plan" style="width:${pct(r.planTotal,PROGRAM.totalCredits)}%"></i>`;
+  const gpaTxt = r.gpa!=null ? r.gpa.toFixed(1) : "—";
+  $("#substats").innerHTML = `
+    <span>צבירה (כולל בלימוד/מתוכנן): <b>${r.doneTotal+r.curTotal+r.planTotal}</b> / ${PROGRAM.totalCredits} נ"ז</span>
+    <span>מתקדמות: <b style="color:var(--done)">${r.advDone}</b>+<b style="color:var(--cur)">${r.advCur}</b>+<b style="color:var(--accent)">${r.advPlan}</b> / ${PROGRAM.advancedCredits}</span>
+    <span>ממוצע (GPA): <b>${gpaTxt}</b> <span style="font-size:11px">(${r.gpaCredits} נ"ז)</span></span>
+    <span>הושלמו: <b>${Math.round(pct(r.doneTotal,PROGRAM.totalCredits))}%</b></span>`;
+}
+
+// פאנל הסמסטרים (נוכחי + הבא)
+function gatherByStatus(stv){
+  const out=[];
+  allFixedCourses().forEach(c=>{ if(S.status[c.code]===stv) out.push({name:c.name, code:c.code, cr:c.cr, adv:isAdv(c)}); });
+  if (S.research===stv) out.push({name:"השתתפות במחקרים", code:"91412", cr:0, adv:false});
+  S.seminars.forEach(s=>{ if(s.status===stv) out.push({name:s.label, code:"", cr:s.cr, adv:true}); });
+  S.free.forEach(f=>{ if(f.status===stv) out.push({name:(f.name||"בחירה חופשית"), code:"", cr:+f.cr||0, adv:!!f.advanced}); });
+  ["english","library"].forEach(k=>{ if(S.general[k]===stv) out.push({name:k==="english"?"דרישות אנגלית":"הדרכה ביבליוגרפית", code:"", cr:0, adv:false}); });
+  return out;
+}
+function semTable(list){
+  if(!list.length) return el("div","empty","— אין —");
+  const adv=list.reduce((a,p)=>a+(p.adv?p.cr:0),0);
+  const tot=list.reduce((a,p)=>a+p.cr,0);
+  const t=el("table","sem-table"), tb=el("tbody");
+  list.forEach(p=>{ const tr=el("tr"); tr.innerHTML=`
+    <td style="width:56px;color:var(--muted)">${p.code||""}</td>
+    <td>${escapeHtml(p.name)} ${p.adv?'<span class="lvl adv">מתקדם</span>':''}</td>
+    <td class="tot" style="width:54px;text-align:center">${p.cr||"—"}</td>`; tb.appendChild(tr); });
+  const trT=el("tr"); trT.innerHTML=`<td></td><td class="tot">סה"כ — ${list.length} פריטים${adv?` (${adv} נ"ז מתקדמות)`:""}</td><td class="tot" style="text-align:center">${tot}</td>`;
+  tb.appendChild(trT); t.appendChild(tb); return t;
+}
+function renderSemesterPanel(r){
+  const node=el("section","group");
+  node.innerHTML=`<div class="ghead"><span class="chev">▾</span>
+    <div class="gtitle">📖 הסמסטרים שלי<div class="gsub">מה בלימוד כעת ומה מתוכנן לסמסטר הבא</div></div>
+    <div class="gright"><span class="gcredits"><span style="color:var(--cur)">${r.curTotal}</span> + <span style="color:var(--accent)">${r.planTotal}</span> נ"ז</span></div></div>
+    <div class="gbody"></div>`;
+  $(".ghead",node).addEventListener("click",e=>{ if(!e.target.closest("a")) node.classList.toggle("collapsed"); });
+  const b=$(".gbody",node);
+  const cur=el("div","sem-sub cur"); cur.innerHTML=`<h4>📖 סמסטר נוכחי (בלימוד) — ${r.curTotal} נ"ז</h4>`;
+  cur.appendChild(semTable(gatherByStatus(ST_CUR)));
+  const next=el("div","sem-sub next"); next.innerHTML=`<h4>📅 סמסטר הבא (מתוכנן) — ${r.planTotal} נ"ז</h4>`;
+  next.appendChild(semTable(gatherByStatus(ST_PLAN)));
+  b.appendChild(cur); b.appendChild(next);
+  return node;
+}
+
+function renderLeftPanel(r){
+  const node=el("section","group");
+  node.innerHTML=`<div class="ghead"><span class="chev">▾</span>
+    <div class="gtitle">⏳ מה נשאר?<div class="gsub">דרישות שטרם הושלמו — וכמה הסמסטרים מכסים</div></div>
+    <div class="gright"><span class="gcredits" style="color:var(--muted)">${r.leftTotal} נ"ז לא משובצים</span></div></div>
+    <div class="gbody" id="left-panel"></div>`;
+  $(".ghead",node).addEventListener("click",e=>{ if(!e.target.closest("a")) node.classList.toggle("collapsed"); });
+  const b=$("#left-panel",node);
+
+  if (r.allDone){ b.appendChild(el("div","done-banner","🎓 כל הדרישות הושלמו! מזל טוב.")); return node; }
+
+  const items=[];
+  // scheduled = current + planned
+  const reqC=(label,done,scheduled,target)=>{
+    if (done>=target){ items.push({ok:true, txt:`${label} — הושלם`}); return; }
+    const left=target-done, cover=Math.min(scheduled,left), after=r1(Math.max(0,left-scheduled));
+    let t=`${label}: הושלמו ${r1(done)}, נותרו ${r1(left)} נ"ז`;
+    let cov = scheduled>0 ? `<span class="cover"> · משובצים ${r1(cover)}${after>0?`, יישארו ${after}`:" — יכוסה ✓"}</span>` : "";
+    items.push({ok:false, txt:t+cov});
+  };
+  const reqBool=(label,s)=>{
+    if (s.done) items.push({ok:true, txt:`${label} — הושלם`});
+    else items.push({ok:false, txt:`${label}${s.cur?'<span class="cover"> · בלימוד כעת</span>':(s.plan?'<span class="cover"> · מתוכנן</span>':'')}`});
+  };
+
+  reqC("לימודי תשתית", r.found.d, r.found.c+r.found.p, PROGRAM.foundation.target);
+  reqBool("השתתפות במחקרים (91412)", r.researchS);
+  reqC("פסיכולוגיה חובה", r.mand.d, r.mand.c+r.mand.p, PROGRAM.psyMandatory.target);
+
+  if (r.electiveOk) items.push({ok:true, txt:"פסיכולוגיה בחירה — הושלם"});
+  else {
+    reqC('פסיכולוגיה בחירה (סה"כ)', r.elDone, r.elCur+r.elPlan, ELECTIVE_MIN);
+    if (r.elAdvDone<ELECTIVE_ADV_MIN) reqC("— מתוכן מתקדמות", r.elAdvDone, r.elAdvCur+r.elAdvPlan, ELECTIVE_ADV_MIN);
+    if (!S.oldProgram) ["א","ב","ג"].forEach(k=>{ const cs=r.clusters[k];
+      if(!cs.d) items.push({ok:false, txt:`חסר קורס מתקדם מאשכול ${k}׳${cs.c?'<span class="cover"> · בלימוד</span>':(cs.p?'<span class="cover"> · מתוכנן</span>':'')}`}); });
+  }
+
+  if (r.seminarOk) items.push({ok:true, txt:"דרישות סמינריוניות — הושלם"});
+  else { reqC("עבודות סמינריוניות", r.semDone, r.semCur+r.semPlan, SEMINAR_CREDITS);
+    if (!r.semEmpDone) items.push({ok:false, txt:"נדרשת לפחות עבודה סמינריונית אמפירית אחת"}); }
+
+  if (r.freeOk) items.push({ok:true, txt:"בחירה חופשית — הושלם"});
+  else { reqC("בחירה חופשית", r.freeTotDone, r.freeTotCur+r.freeTotPlan, FREE_MIN);
+    if (!r.broadDone) items.push({ok:false, txt:`קורס מרחיב-דעת${r.broadCur?'<span class="cover"> · בלימוד</span>':(r.broadPlan?'<span class="cover"> · מתוכנן</span>':'')}`}); }
+
+  reqBool("דרישות אנגלית", r.english);
+  reqBool("הדרכה ביבליוגרפית בספרייה", r.library);
+
+  reqC('סך הכול לתואר', r.doneTotal, r.curTotal+r.planTotal, PROGRAM.totalCredits);
+  reqC('נ"ז מתקדמות', r.advDone, r.advCur+r.advPlan, PROGRAM.advancedCredits);
+
+  const ul=el("ul"); items.sort((a,b)=>a.ok-b.ok);
+  items.forEach(it=>{ const li=el("li", it.ok?"ok":"todo"); li.innerHTML=it.txt; ul.appendChild(li); });
+  b.appendChild(ul);
+
+  if (!r.allDone && (r.doneTotal+r.curTotal+r.planTotal>=PROGRAM.totalCredits) && (r.advDone+r.advCur+r.advPlan>=PROGRAM.advancedCredits))
+    b.appendChild(el("div","grad-soon","💡 בין שהושלם, בלימוד והמתוכנן — אתה מגיע ל-120 נ\"ז. ודא/י שכל סעיף מסומן כמכוסה."));
+  return node;
+}
+
+/* ============================================================ אירועים ============================================================ */
+function setStatus(kind, id, st){
+  const cur=curStatus(kind,id); const next=(cur===st)?"":st;
+  if (kind==="course"){ if(next) S.status[id]=next; else { delete S.status[id]; delete S.grades[id]; } }
+  else if (kind==="research"){ S.research=next; }
+  else if (kind==="seminar"){ S.seminars[+id].status=next; if(next!==ST_DONE) S.seminars[+id].grade=null; }
+  else if (kind==="free"){ const f=S.free.find(x=>x.id===id); if(f){ f.status=next; if(next!==ST_DONE) f.grade=null; } }
+  else if (kind==="general"){ S.general[id]=next; }
+  save(); render();
+}
+function curStatus(kind,id){
+  if (kind==="course") return S.status[id]||"";
+  if (kind==="research") return S.research||"";
+  if (kind==="seminar") return S.seminars[+id].status||"";
+  if (kind==="free"){ const f=S.free.find(x=>x.id===id); return f?(f.status||""):""; }
+  if (kind==="general") return S.general[id]||"";
+  return "";
+}
+
+function bindDynamic(){
+  document.querySelectorAll(".seg[data-kind]").forEach(seg=>{
+    const kind=seg.dataset.kind, id=seg.dataset.id;
+    seg.querySelectorAll("button[data-st]").forEach(btn=>{
+      btn.addEventListener("click", e=>{ e.stopPropagation(); setStatus(kind,id,btn.dataset.st); });
+    });
+  });
+  document.querySelectorAll("[data-grade]").forEach(inp=>inp.addEventListener("input",e=>{
+    const c=e.target.dataset.grade, v=numOrNull(e.target.value);
+    if(v==null) delete S.grades[c]; else S.grades[c]=v; save(); renderHeadline(compute());
+  }));
+  document.querySelectorAll("[data-sem-emp]").forEach(cb=>cb.addEventListener("change",e=>{ S.seminars[+e.target.dataset.semEmp].empirical=e.target.checked; save(); render(); }));
+  document.querySelectorAll("[data-sem-grade]").forEach(inp=>inp.addEventListener("input",e=>{ S.seminars[+e.target.dataset.semGrade].grade=numOrNull(e.target.value); save(); renderHeadline(compute()); }));
+  document.querySelectorAll("[data-free-grade]").forEach(inp=>inp.addEventListener("input",e=>{ const f=S.free.find(x=>x.id===e.target.dataset.freeGrade); if(f) f.grade=numOrNull(e.target.value); save(); renderHeadline(compute()); }));
+  document.querySelectorAll("[data-free-del]").forEach(btn=>btn.addEventListener("click",e=>{ S.free=S.free.filter(x=>x.id!==e.target.dataset.freeDel); save(); render(); }));
+  const addBtn=$("#free-add-btn");
+  if (addBtn) addBtn.addEventListener("click", ()=>{
+    const cr=numOrNull($("#free-cr").value);
+    if(cr==null||cr<=0){ alert("יש להזין מספר נקודות זכות תקין"); return; }
+    S.free.push({ id:genId(), name:$("#free-name").value.trim(), cr,
+      grade:numOrNull($("#free-grade").value), status:$("#free-status").value,
+      broadening:$("#free-broad").checked, advanced:$("#free-adv").checked });
+    save(); render();
+  });
+}
+function genId(){ return "f"+Date.now().toString(36)+Math.floor(performance.now()).toString(36); }
+
+/* ============================================================ כלים גלובליים ============================================================ */
+$("#old-program").checked = S.oldProgram;
+$("#old-program").addEventListener("change", e=>{ S.oldProgram=e.target.checked; save(); render(); });
+$("#btn-collapse").addEventListener("click", ()=>{
+  const groups=document.querySelectorAll("#app .group");
+  const anyOpen=[...groups].some(g=>!g.classList.contains("collapsed"));
+  groups.forEach(g=>g.classList.toggle("collapsed",anyOpen));
+});
+$("#btn-advance").addEventListener("click", ()=>{
+  if(!confirm("סיום סמסטר: כל מה ש'בלימוד כעת' יסומן 'הושלם', וכל מה ש'מתוכנן' יהפוך ל'בלימוד כעת'. להמשיך?")) return;
+  const promote=v=> v===ST_CUR?ST_DONE:(v===ST_PLAN?ST_CUR:v);
+  Object.keys(S.status).forEach(c=>{ S.status[c]=promote(S.status[c]); });
+  S.research=promote(S.research);
+  S.general.english=promote(S.general.english); S.general.library=promote(S.general.library);
+  S.seminars.forEach(s=>s.status=promote(s.status));
+  S.free.forEach(f=>f.status=promote(f.status));
+  save(); render();
+});
+$("#btn-reset").addEventListener("click", ()=>{ if(confirm("לאפס את כל הנתונים? פעולה זו אינה הפיכה.")){ S=structuredClone(DEFAULT_STATE); save(); $("#old-program").checked=false; render(); } });
+$("#btn-export").addEventListener("click", ()=>{ const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"}); const a=el("a"); a.href=URL.createObjectURL(blob); a.download="openu-psychology-plan.json"; a.click(); });
+$("#file-import").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader();
+  rd.onload=()=>{ try{ S=migrate(Object.assign(structuredClone(DEFAULT_STATE), JSON.parse(rd.result))); save(); $("#old-program").checked=S.oldProgram; render(); }catch{ alert("קובץ לא תקין"); } }; rd.readAsText(f); });
+$("#btn-print").addEventListener("click", ()=>window.print());
+
+render();
+</script>
+</body>
+</html>
